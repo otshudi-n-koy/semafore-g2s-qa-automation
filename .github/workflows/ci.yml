@@ -1,0 +1,48 @@
+name: CI - SEMAFORE QA Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les dépendances Python
+        run: pip install -r requirements.txt
+
+      - name: Générer les données mock (seed)
+        run: python -m db.seed
+
+      - name: Lancer les contrôles SQL
+        run: python sql/run_controles.py
+
+      - name: Lancer les tests pytest
+        run: pytest tests/ -v
+
+      - name: Démarrer l'API en arrière-plan
+        run: |
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 3
+
+      - name: Setup Node.js (pour Newman)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer Newman
+        run: npm install -g newman
+
+      - name: Lancer la collection Postman
+        run: newman run postman/semafore-api-tests.postman_collection.json --env-var base_url=http://127.0.0.1:8000
