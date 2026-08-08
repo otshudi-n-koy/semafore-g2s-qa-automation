@@ -20,6 +20,7 @@ L'offre demande de sécuriser la qualité des livraisons SEMAFORE via : stratég
 | `powerquery/` | Classeur Excel avec requêtes Power Query reproduisant les contrôles SQL |
 | `.github/workflows/` | Pipeline CI/CD GitHub Actions (seed → contrôles SQL → pytest → API → Newman) |
 | `docs/` | Document de stratégie de recette (structuré sur la trame de livrables de l'offre) |
+| `scripts/` | Script de synchronisation automatique des résultats pytest vers Xray Cloud (JUnit → API Xray) |
 
 ## Anomalies volontaires dans le jeu de données
 
@@ -63,13 +64,30 @@ newman run postman/semafore-api-tests.postman_collection.json --env-var base_url
 Un projet Jira Cloud dédié (clé `SEMA`) structure le patrimoine de tests :
 - 4 cas de test (Manual, Action/Données/Résultat attendu)
 - 1 Test Plan regroupant les 4 cas
-- 1 Test Execution avec statut d'exécution global et historique
+- 1 Test Execution (`SEMA-6`) avec statut d'exécution global et historique
 
 Chaque cas de test est lié au script SQL correspondant dans ce dépôt.
 
+### Synchronisation automatique CI → Xray
+
+Le pipeline CI/CD pousse automatiquement les résultats pytest vers la Test Execution Xray à chaque exécution, via `scripts/push_to_xray.py` :
+- Chaque test pytest est mappé à sa clé Xray via `record_property("test_key", "SEMA-N")` (voir `tests/test_controles_donnees.py`)
+- Le format JUnit `legacy` est requis pour que Xray reconnaisse la propriété (`pytest.ini`)
+- L'étape d'envoi s'exécute **même si les tests échouent** (`if: always()`), pour que les statuts FAILED remontent aussi dans Xray
+- Authentification via Client ID / Client Secret Xray Cloud, stockés en secrets GitHub (`XRAY_CLIENT_ID`, `XRAY_CLIENT_SECRET`) — jamais en clair dans le dépôt
+
+Pour rejouer la synchronisation en local :
+
+```bash
+export XRAY_CLIENT_ID="..."
+export XRAY_CLIENT_SECRET="..."
+pytest tests/ -v --junitxml=report.xml
+python scripts/push_to_xray.py
+```
+
 ## Pipeline CI/CD
 
-Le pipeline GitHub Actions échoue volontairement à l'étape des tests pytest tant que les anomalies de données ne sont pas résolues — comportement assumé, simulant un contrôle qualité bloquant avant livraison.
+Le pipeline GitHub Actions échoue volontairement à l'étape des tests pytest tant que les anomalies de données ne sont pas résolues — comportement assumé, simulant un contrôle qualité bloquant avant livraison. Les résultats (succès et échecs) sont ensuite automatiquement remontés vers la Test Execution Xray, qu'ils échouent ou non.
 
 ## Stratégie de recette
 
