@@ -4,3 +4,4 @@ __pycache__/
 db/semafore.db
 .vscode/
 *.egg-info/
+powerquery/~$*
