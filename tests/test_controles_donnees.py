@@ -12,7 +12,7 @@ def conn():
     connection.close()
 
 
-def test_pas_de_perte_critique_sur_flux(conn):
+def test_SEMA_1_pas_de_perte_critique_sur_flux(conn):
     """
     Contrôle de non-régression : l'écart source->diffuse ne doit pas dépasser
     5% du volume source (seuil de tolérance métier à ajuster avec le client).
@@ -37,7 +37,7 @@ def test_pas_de_perte_critique_sur_flux(conn):
         )
 
 
-def test_aucun_employe_actif_sans_identite(conn):
+def test_SEMA_2_aucun_employe_actif_sans_identite(conn):
     """
     Règle de gestion critique : tout employé actif doit avoir une identité SI
     (sinon perte d'accès aux applications RH/IAM).
@@ -56,7 +56,7 @@ def test_aucun_employe_actif_sans_identite(conn):
     )
 
 
-def test_pas_de_doublons_droits_acces(conn):
+def test_SEMA_3_pas_de_doublons_droits_acces(conn):
     """
     Contrôle qualité : un même droit (identité + appli + rôle) ne doit pas
     être attribué plusieurs fois (risque de sur-habilitation, audit sécurité).
@@ -74,7 +74,7 @@ def test_pas_de_doublons_droits_acces(conn):
     )
 
 
-def test_toute_identite_a_au_moins_un_droit(conn):
+def test_SEMA_4_toute_identite_a_au_moins_un_droit(conn):
     """
     Cohérence référentielle : une identité SI créée sans aucun droit d'accès
     est probablement un compte orphelin ou un défaut de provisioning.

@@ -29,7 +29,14 @@ jobs:
         run: python sql/run_controles.py
 
       - name: Lancer les tests pytest
-        run: pytest tests/ -v
+        run: pytest tests/ -v --junitxml=report.xml
+
+      - name: Pousser les résultats vers Xray Cloud
+        if: always()
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+        run: python scripts/push_to_xray.py
 
       - name: Démarrer l'API en arrière-plan
         run: |
