@@ -12,11 +12,12 @@ def conn():
     connection.close()
 
 
-def test_SEMA_1_pas_de_perte_critique_sur_flux(conn):
+def test_SEMA_1_pas_de_perte_critique_sur_flux(conn, record_property):
     """
     Contrôle de non-régression : l'écart source->diffuse ne doit pas dépasser
     5% du volume source (seuil de tolérance métier à ajuster avec le client).
     """
+    record_property("test_key", "SEMA-1")
     cursor = conn.cursor()
     cursor.execute("""
         SELECT
@@ -37,11 +38,13 @@ def test_SEMA_1_pas_de_perte_critique_sur_flux(conn):
         )
 
 
-def test_SEMA_2_aucun_employe_actif_sans_identite(conn):
+def test_SEMA_2_aucun_employe_actif_sans_identite(conn, record_property):
     """
     Règle de gestion critique : tout employé actif doit avoir une identité SI
     (sinon perte d'accès aux applications RH/IAM).
     """
+
+    record_property("test_key", "SEMA-2")
     cursor = conn.cursor()
     cursor.execute("""
         SELECT e.matricule
@@ -56,11 +59,12 @@ def test_SEMA_2_aucun_employe_actif_sans_identite(conn):
     )
 
 
-def test_SEMA_3_pas_de_doublons_droits_acces(conn):
+def test_SEMA_3_pas_de_doublons_droits_acces(conn, record_property):
     """
     Contrôle qualité : un même droit (identité + appli + rôle) ne doit pas
     être attribué plusieurs fois (risque de sur-habilitation, audit sécurité).
     """
+    record_property("test_key", "SEMA-3")
     cursor = conn.cursor()
     cursor.execute("""
         SELECT identifiant_si, application, role, COUNT(*) as nb
@@ -74,11 +78,12 @@ def test_SEMA_3_pas_de_doublons_droits_acces(conn):
     )
 
 
-def test_SEMA_4_toute_identite_a_au_moins_un_droit(conn):
+def test_SEMA_4_toute_identite_a_au_moins_un_droit(conn, record_property):
     """
     Cohérence référentielle : une identité SI créée sans aucun droit d'accès
     est probablement un compte orphelin ou un défaut de provisioning.
     """
+    record_property("test_key", "SEMA-4")
     cursor = conn.cursor()
     cursor.execute("""
         SELECT i.identifiant_si
