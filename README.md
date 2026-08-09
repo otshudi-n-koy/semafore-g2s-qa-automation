@@ -59,6 +59,29 @@ npm install -g newman
 newman run postman/semafore-api-tests.postman_collection.json --env-var base_url=http://127.0.0.1:8000
 ```
 
+## Démarrage via Docker
+
+Pour lancer l'environnement sans installer Python/conda en local :
+
+```bash
+docker compose up --build
+```
+
+Cela génère automatiquement les données (service `seed`) puis démarre l'API sur `http://localhost:8000/docs`. Les données sont persistées dans un volume Docker (`dbdata`) entre les redémarrages.
+
+Pour arrêter :
+
+```bash
+docker compose down
+```
+
+Pour régénérer des données fraîches (supprime le volume existant) :
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
 ## Gestion des tests — Xray / Jira Cloud
 
 Un projet Jira Cloud dédié (clé `SEMA`) structure le patrimoine de tests :

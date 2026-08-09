@@ -1,0 +1,19 @@
+services:
+  seed:
+    build: .
+    command: python -m db.seed
+    volumes:
+      - dbdata:/app/db
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - dbdata:/app/db
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+
+volumes:
+  dbdata:
