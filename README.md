@@ -69,17 +69,17 @@ docker compose up --build
 
 Cela génère automatiquement les données (service `seed`) puis démarre l'API sur `http://localhost:8000/docs`. Les données sont persistées dans un volume Docker (`dbdata`) entre les redémarrages.
 
-Pour arrêter :
-
-```bash
-docker compose down
-```
-
-Pour régénérer des données fraîches (supprime le volume existant) :
+**Important** : si le volume `dbdata` existe déjà (run précédent), le service `seed` échoue car la base contient déjà des données. Pour repartir d'un environnement propre :
 
 ```bash
 docker compose down -v
 docker compose up --build
+```
+
+Pour arrêter sans supprimer les données :
+
+```bash
+docker compose down
 ```
 
 ## Gestion des tests — Xray / Jira Cloud
@@ -118,7 +118,7 @@ Voir [`docs/Strategie_Recette_SEMAFORE.docx`](docs/Strategie_Recette_SEMAFORE.do
 
 ## Stack technique
 
-Python 3.11 · FastAPI · SQLAlchemy · SQLite · pytest · Postman/Newman · GitHub Actions · Power Query (Excel) · Jira Cloud / Xray
+Python 3.11 · FastAPI · SQLAlchemy · SQLite · pytest · Postman/Newman · GitHub Actions · Power Query (Excel) · Jira Cloud / Xray · Docker
 
 ---
 
