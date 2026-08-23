@@ -7,7 +7,7 @@
   },
   "item": [
     {
-      "name": "GET Root",
+      "name": "SEMA-11 GET Root",
       "event": [
         {
           "listen": "test",
@@ -32,18 +32,14 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            ""
-          ]
+          "host": ["{{base_url}}"],
+          "path": [""]
         }
       },
       "response": []
     },
     {
-      "name": "GET List Employees",
+      "name": "SEMA-12 GET List Employees",
       "event": [
         {
           "listen": "test",
@@ -68,18 +64,14 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/employees",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "employees"
-          ]
+          "host": ["{{base_url}}"],
+          "path": ["employees"]
         }
       },
       "response": []
     },
     {
-      "name": "GET Employees filtered by statut",
+      "name": "SEMA-13 GET Employees filtered by statut",
       "event": [
         {
           "listen": "test",
@@ -106,12 +98,8 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/employees?statut=actif",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "employees"
-          ],
+          "host": ["{{base_url}}"],
+          "path": ["employees"],
           "query": [
             {
               "key": "statut",
@@ -123,7 +111,7 @@
       "response": []
     },
     {
-      "name": "GET Employee not found",
+      "name": "SEMA-14 GET Employee not found",
       "event": [
         {
           "listen": "test",
@@ -144,19 +132,58 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/employees/MAT9999",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "employees",
-            "MAT9999"
-          ]
+          "host": ["{{base_url}}"],
+          "path": ["employees", "MAT9999"]
         }
       },
       "response": []
     },
     {
-      "name": "GET Flux status",
+      "name": "SEMA-15 GET Access rights duplicate detection",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Detecte un doublon application/role\", function () {\r",
+              "    const json = pm.response.json();\r",
+              "    const seen = new Set();\r",
+              "    let hasDuplicate = false;\r",
+              "\r",
+              "    json.rights.forEach(r => {\r",
+              "        const key = `${r.application}|${r.role}`;\r",
+              "        if (seen.has(key)) {\r",
+              "            hasDuplicate = true;\r",
+              "        }\r",
+              "        seen.add(key);\r",
+              "    });\r",
+              "\r",
+              "    pm.expect(hasDuplicate).to.be.true;\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/access-rights/SI_MAT0001",
+          "host": ["{{base_url}}"],
+          "path": ["access-rights", "SI_MAT0001"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "SEMA-16 GET Flux status",
       "event": [
         {
           "listen": "test",
@@ -188,13 +215,8 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/flux/status",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "flux",
-            "status"
-          ]
+          "host": ["{{base_url}}"],
+          "path": ["flux", "status"]
         }
       },
       "response": []
@@ -207,9 +229,7 @@
         "type": "text/javascript",
         "packages": {},
         "requests": {},
-        "exec": [
-          ""
-        ]
+        "exec": [""]
       }
     },
     {
@@ -218,9 +238,7 @@
         "type": "text/javascript",
         "packages": {},
         "requests": {},
-        "exec": [
-          ""
-        ]
+        "exec": [""]
       }
     }
   ],
