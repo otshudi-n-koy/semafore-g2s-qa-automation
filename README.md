@@ -59,6 +59,16 @@ npm install -g newman
 newman run postman/semafore-api-tests.postman_collection.json --env-var base_url=http://127.0.0.1:8000
 ```
 
+## Génération du jeu de données de démonstration
+
+Le script `db/seed.py` est le point d'entrée pour alimenter la base SQLite de démonstration. Il crée intentionnellement un dataset synthétique construit pour reproduire les écarts métier que la recette doit détecter :
+
+- 100 employés, dont seulement 95 identités SI (anomalie volontaire de référence)
+- plusieurs droits d'accès par identité, dont des doublons explicites sur une même application/role
+- 3 flux de traitement avec écarts de volumétrie entre l'étape source, intégration et diffusion
+
+Ces anomalies sont volontairement présentes pour vérifier que les contrôles SQL, les requêtes Power Query et les tests pytest remontent bien des écarts de qualité et non pas un jeu de données parfait.
+
 ## Démarrage via Docker
 
 Pour lancer l'environnement sans installer Python/conda en local :
