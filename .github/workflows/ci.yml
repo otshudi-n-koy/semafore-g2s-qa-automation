@@ -31,25 +31,39 @@ jobs:
       - name: Lancer les tests pytest
         run: pytest tests/ -v --junitxml=report.xml
 
-      - name: Pousser les résultats vers Xray Cloud
-        if: always()
-        env:
-          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
-          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
-        run: python scripts/push_to_xray.py
-
       - name: Démarrer l'API en arrière-plan
+        if: always()
         run: |
           python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 3
+          for i in {1..10}; do
+            curl -sf http://127.0.0.1:8000/ && break
+            echo "En attente de l'API... ($i)"
+            sleep 1
+          done
 
       - name: Setup Node.js (pour Newman)
+        if: always()
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
       - name: Installer Newman
+        if: always()
         run: npm install -g newman
 
       - name: Lancer la collection Postman
-        run: newman run postman/semafore-api-tests.postman_collection.json --env-var base_url=http://127.0.0.1:8000
+        if: always()
+        run: |
+          newman run postman/semafore-api-tests.postman_collection.json \
+            --env-var base_url=http://127.0.0.1:8000 \
+            --reporters cli,junit \
+            --reporter-junit-export newman-report.xml
+
+      - name: Pousser les résultats vers Xray Cloud
+        if: always()
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+          XRAY_TEST_EXECUTION_KEY_PYTEST: SEMA-6
+          XRAY_TEST_EXECUTION_KEY_NEWMAN: ${{ vars.XRAY_TEST_EXECUTION_KEY_NEWMAN }}
+        run: python scripts/push_to_xray.py
