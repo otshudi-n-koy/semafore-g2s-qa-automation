@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="4" time="0.098" timestamp="2026-08-09T00:02:03.856613+02:00" hostname="ACER-OTSHUDI"><testcase classname="tests.test_controles_donnees" name="test_SEMA_1_pas_de_perte_critique_sur_flux" file="tests\test_controles_donnees.py" line="14" time="0.002"><properties><property name="test_key" value="SEMA-1" /></properties></testcase><testcase classname="tests.test_controles_donnees" name="test_SEMA_2_aucun_employe_actif_sans_identite" file="tests\test_controles_donnees.py" line="40" time="0.002"><properties><property name="test_key" value="SEMA-2" /></properties><failure message="AssertionError: 4 employé(s) actif(s) sans identité SI : ['MAT0096', 'MAT0098', 'MAT0099', 'MAT0100']&#10;assert not [('MAT0096',), ('MAT0098',), ('MAT0099',), ('MAT0100',)]">conn = &lt;sqlite3.Connection object at 0x000002191BDCE7A0&gt;, record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x000002191BE1AC00&gt;
+
+    def test_SEMA_2_aucun_employe_actif_sans_identite(conn, record_property):
+        """
+        Règle de gestion critique : tout employé actif doit avoir une identité SI
+        (sinon perte d'accès aux applications RH/IAM).
+        """
+    
+        record_property("test_key", "SEMA-2")
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT e.matricule
+            FROM employees e
+            LEFT JOIN identities i ON e.matricule = i.matricule
+            WHERE i.identifiant_si IS NULL AND e.statut = 'actif'
+        """)
+        orphelins = cursor.fetchall()
+&gt;       assert not orphelins, (
+            f"{len(orphelins)} employé(s) actif(s) sans identité SI : "
+            f"{[m[0] for m in orphelins]}"
+        )
+E       AssertionError: 4 employé(s) actif(s) sans identité SI : ['MAT0096', 'MAT0098', 'MAT0099', 'MAT0100']
+E       assert not [('MAT0096',), ('MAT0098',), ('MAT0099',), ('MAT0100',)]
+
+tests\test_controles_donnees.py:56: AssertionError</failure></testcase><testcase classname="tests.test_controles_donnees" name="test_SEMA_3_pas_de_doublons_droits_acces" file="tests\test_controles_donnees.py" line="61" time="0.002"><properties><property name="test_key" value="SEMA-3" /></properties><failure message="AssertionError: 11 doublon(s) de droits détecté(s) : [('SI_MAT0001', 'SEMAFORE', 'lecture', 2), ('SI_MAT0009', 'ANNUAIRE_AD', 'lecture', 2), ('SI_MAT0010', 'SEMAFORE', 'consultant', 2), ('SI_MAT0020', 'ANNUAIRE_AD', 'consultant', 2), ('SI_MAT0024', 'SI_PAIE', 'gestionnaire', 2), ('SI_MAT0060', 'PORTAIL_RH', 'consultant', 2), ('SI_MAT0066', 'SI_PAIE', 'gestionnaire', 2), ('SI_MAT0071', 'SI_PAIE', 'administrateur', 2), ('SI_MAT0077', 'PORTAIL_RH', 'consultant', 2), ('SI_MAT0084', 'SEMAFORE', 'gestionnaire', 3), ('SI_MAT0086', 'PORTAIL_RH', 'gestionnaire', 2)]&#10;assert not [('SI_MAT0001', 'SEMAFORE', 'lecture', 2), ('SI_MAT0009', 'ANNUAIRE_AD', 'lecture', 2), ('SI_MAT0010', 'SEMAFORE', 'consultant', 2), ('SI_MAT0020', 'ANNUAIRE_AD', 'consultant', 2), ('SI_MAT0024', 'SI_PAIE', 'gestionnaire', 2), ('SI_MAT0060', 'PORTAIL_RH', 'consultant', 2), ...]">conn = &lt;sqlite3.Connection object at 0x000002191BDCE200&gt;, record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x000002191BE5A660&gt;
+
+    def test_SEMA_3_pas_de_doublons_droits_acces(conn, record_property):
+        """
+        Contrôle qualité : un même droit (identité + appli + rôle) ne doit pas
+        être attribué plusieurs fois (risque de sur-habilitation, audit sécurité).
+        """
+        record_property("test_key", "SEMA-3")
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT identifiant_si, application, role, COUNT(*) as nb
+            FROM access_rights
+            GROUP BY identifiant_si, application, role
+            HAVING nb &gt; 1
+        """)
+        doublons = cursor.fetchall()
+&gt;       assert not doublons, (
+            f"{len(doublons)} doublon(s) de droits détecté(s) : {doublons}"
+        )
+E       AssertionError: 11 doublon(s) de droits détecté(s) : [('SI_MAT0001', 'SEMAFORE', 'lecture', 2), ('SI_MAT0009', 'ANNUAIRE_AD', 'lecture', 2), ('SI_MAT0010', 'SEMAFORE', 'consultant', 2), ('SI_MAT0020', 'ANNUAIRE_AD', 'consultant', 2), ('SI_MAT0024', 'SI_PAIE', 'gestionnaire', 2), ('SI_MAT0060', 'PORTAIL_RH', 'consultant', 2), ('SI_MAT0066', 'SI_PAIE', 'gestionnaire', 2), ('SI_MAT0071', 'SI_PAIE', 'administrateur', 2), ('SI_MAT0077', 'PORTAIL_RH', 'consultant', 2), ('SI_MAT0084', 'SEMAFORE', 'gestionnaire', 3), ('SI_MAT0086', 'PORTAIL_RH', 'gestionnaire', 2)]
+E       assert not [('SI_MAT0001', 'SEMAFORE', 'lecture', 2), ('SI_MAT0009', 'ANNUAIRE_AD', 'lecture', 2), ('SI_MAT0010', 'SEMAFORE', 'consultant', 2), ('SI_MAT0020', 'ANNUAIRE_AD', 'consultant', 2), ('SI_MAT0024', 'SI_PAIE', 'gestionnaire', 2), ('SI_MAT0060', 'PORTAIL_RH', 'consultant', 2), ...]
+
+tests\test_controles_donnees.py:76: AssertionError</failure></testcase><testcase classname="tests.test_controles_donnees" name="test_SEMA_4_toute_identite_a_au_moins_un_droit" file="tests\test_controles_donnees.py" line="80" time="0.001"><properties><property name="test_key" value="SEMA-4" /></properties></testcase></testsuite></testsuites>

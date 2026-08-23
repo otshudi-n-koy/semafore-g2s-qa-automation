@@ -7,6 +7,12 @@ engine = init_db()
 Session = sessionmaker(bind=engine)
 session = Session()
 
+# Guard idempotence : si déjà seedé, on ne rejoue pas
+if session.query(Employee).first() is not None:
+    print("Base déjà seedée — seed ignoré (utilise 'docker compose down -v' pour reset).")
+    session.close()
+    exit(0)
+
 NOMS = ["Martin", "Bernard", "Dubois", "Thomas", "Robert", "Petit", "Durand", "Leroy", "Moreau", "Simon"]
 PRENOMS = ["Jean", "Marie", "Pierre", "Sophie", "Luc", "Claire", "Paul", "Julie", "Marc", "Anne"]
 APPS = ["SEMAFORE", "PORTAIL_RH", "ANNUAIRE_AD", "SI_PAIE"]
