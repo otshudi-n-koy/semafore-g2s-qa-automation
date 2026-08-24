@@ -13,23 +13,23 @@ L'offre demande de sécuriser la qualité des livraisons SEMAFORE via : stratég
 | Dossier | Contenu |
 |---|---|
 | `app/` | Mock API FastAPI simulant le concentrateur de données (employés, identités, droits d'accès, statut des flux) |
-| `db/` | Modèle SQLAlchemy + génération de données synthétiques avec anomalies volontaires |
+| `db/` | Modèle SQLAlchemy + génération de données synthétiques avec anomalies volontaires (seed idempotent) |
 | `sql/` | Scripts SQL de contrôle (rapprochement volumétrique, doublons, cohérence référentielle) |
 | `tests/` | Tests pytest de non-régression sur les mêmes règles de gestion |
-| `postman/` | Collection Postman/Newman (10 tests API) |
+| `postman/` | Collection Postman/Newman (6 tests API, mappés 1:1 aux Tests Xray `SEMA-11` à `SEMA-16`) |
 | `powerquery/` | Classeur Excel avec requêtes Power Query reproduisant les contrôles SQL |
-| `.github/workflows/` | Pipeline CI/CD GitHub Actions (seed → contrôles SQL → pytest → API → Newman) |
+| `.github/workflows/` | Pipeline CI/CD GitHub Actions (seed → contrôles SQL → pytest → API → Newman → Xray) |
 | `docs/` | Document de stratégie de recette (structuré sur la trame de livrables de l'offre) |
-| `scripts/` | Script de synchronisation automatique des résultats pytest vers Xray Cloud (JUnit → API Xray) |
+| `scripts/` | Synchronisation des résultats vers Xray Cloud (`push_to_xray.py`) et enrichissement du rapport JUnit Newman (`enrich_newman_report.py`) |
 
 ## Anomalies volontaires dans le jeu de données
 
 Pour valider que les contrôles détectent réellement des écarts (et pas seulement qu'ils s'exécutent sans erreur), le jeu de données injecte :
 - des employés actifs sans identité SI (orphelins référentiels)
-- des doublons de droits d'accès
+- des doublons de droits d'accès (même application/role attribués deux fois à une même identité)
 - des écarts de volumétrie entre les étapes source / intégré / diffusé d'un flux
 
-Ces anomalies sont détectées de façon cohérente par les 3 canaux de contrôle : SQL, Power Query, et pytest.
+Ces anomalies sont détectées de façon cohérente par les 4 canaux de contrôle : SQL, Power Query, pytest, et l'API (via Postman/Newman).
 
 ## Démarrage rapide
 
@@ -59,15 +59,19 @@ npm install -g newman
 newman run postman/semafore-api-tests.postman_collection.json --env-var base_url=http://127.0.0.1:8000
 ```
 
+Un fichier d'environnement Postman (`SEMAFORE_Local.postman_environment.json`, non versionné) peut être importé dans l'app Postman pour l'usage manuel en local — il définit `base_url = http://localhost:8000`.
+
 ## Génération du jeu de données de démonstration
 
 Le script `db/seed.py` est le point d'entrée pour alimenter la base SQLite de démonstration. Il crée intentionnellement un dataset synthétique construit pour reproduire les écarts métier que la recette doit détecter :
 
 - 100 employés, dont seulement 95 identités SI (anomalie volontaire de référence)
-- plusieurs droits d'accès par identité, dont des doublons explicites sur une même application/role
+- plusieurs droits d'accès par identité, dont des doublons explicites sur une même application/role (identité `SI_MAT0001`)
 - 3 flux de traitement avec écarts de volumétrie entre l'étape source, intégration et diffusion
 
-Ces anomalies sont volontairement présentes pour vérifier que les contrôles SQL, les requêtes Power Query et les tests pytest remontent bien des écarts de qualité et non pas un jeu de données parfait.
+Le script est **idempotent** : un guard vérifie si la base contient déjà des employés avant de rejouer l'insertion, pour éviter les violations de contrainte `UNIQUE` (`matricule`) sur les redémarrages successifs d'un même environnement Docker.
+
+Ces anomalies sont volontairement présentes pour vérifier que les contrôles SQL, les requêtes Power Query, les tests pytest et les tests API remontent bien des écarts de qualité et non pas un jeu de données parfait.
 
 ## Démarrage via Docker
 
@@ -77,9 +81,9 @@ Pour lancer l'environnement sans installer Python/conda en local :
 docker compose up --build
 ```
 
-Cela génère automatiquement les données (service `seed`) puis démarre l'API sur `http://localhost:8000/docs`. Les données sont persistées dans un volume Docker (`dbdata`) entre les redémarrages.
+Cela génère automatiquement les données (service `seed`, idempotent) puis démarre l'API sur `http://localhost:8000/docs`. Les données sont persistées dans un volume Docker (`dbdata`) entre les redémarrages.
 
-**Important** : si le volume `dbdata` existe déjà (run précédent), le service `seed` échoue car la base contient déjà des données. Pour repartir d'un environnement propre :
+Pour repartir d'un environnement totalement propre (reset complet des données) :
 
 ```bash
 docker compose down -v
@@ -92,35 +96,85 @@ Pour arrêter sans supprimer les données :
 docker compose down
 ```
 
+## Endpoints API disponibles
+
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` | `/` | Healthcheck |
+| `GET` | `/employees` | Liste des employés, filtre optionnel `?statut=` |
+| `GET` | `/employees/{matricule}` | Détail d'un employé, `404` si inexistant |
+| `GET` | `/identities` | Liste des identités SI |
+| `GET` | `/access-rights/{identifiant_si}` | Droits d'accès d'une identité |
+| `GET` | `/flux/status` | Statut des étapes de chaque flux (source/intégré/diffusé) |
+
 ## Gestion des tests — Xray / Jira Cloud
 
-Un projet Jira Cloud dédié (clé `SEMA`) structure le patrimoine de tests :
-- 4 cas de test (Manual, Action/Données/Résultat attendu)
-- 1 Test Plan regroupant les 4 cas
-- 1 Test Execution (`SEMA-6`) avec statut d'exécution global et historique
+Un projet Jira Cloud dédié (clé `SEMA`) structure le patrimoine de tests, réparti en **deux Test Executions distinctes** correspondant aux deux canaux d'automatisation :
 
-Chaque cas de test est lié au script SQL correspondant dans ce dépôt.
+| Test Execution | Canal | Tests couverts |
+|---|---|---|
+| `SEMA-6` | pytest (contrôles SQL / règles de gestion) | Tests de non-régression sur les anomalies de données |
+| `SEMA-17` | Postman/Newman (API) | `SEMA-11` à `SEMA-16` — healthcheck, liste employés, filtre statut, 404, doublon droits d'accès, anomalies de flux |
+
+Chaque Test Xray est de type **Generic** (requis pour l'import automatisé JUnit — un Test de type Manual ne peut pas recevoir de résultat automatisé).
+
+### Le mécanisme de rattachement `test_key`
+
+Xray Cloud n'associe **pas** un résultat JUnit à un Test existant par correspondance de nom ou de Summary : sans indication explicite, chaque import crée un nouveau Test générique, ce qui pollue rapidement le projet Jira. Le seul mécanisme fiable est l'injection d'une propriété dédiée dans chaque `<testcase>` du XML :
+
+```xml
+<testcase name="..." classname="...">
+  <properties>
+    <property name="test_key" value="SEMA-11"/>
+  </properties>
+</testcase>
+```
+
+Le reporter JUnit natif de Newman ne génère pas ce bloc — il faut donc **post-traiter** le rapport avant l'envoi à Xray. C'est le rôle de `scripts/enrich_newman_report.py` :
+
+```bash
+python scripts/enrich_newman_report.py newman-report.xml newman-report-xray.xml
+```
+
+Le script s'appuie sur un mapping interne `classname → clé Xray` (dérivé du nom des requêtes Postman) pour injecter la bonne propriété sur chacun des 6 testcases avant l'import.
 
 ### Synchronisation automatique CI → Xray
 
-Le pipeline CI/CD pousse automatiquement les résultats pytest vers la Test Execution Xray à chaque exécution, via `scripts/push_to_xray.py` :
-- Chaque test pytest est mappé à sa clé Xray via `record_property("test_key", "SEMA-N")` (voir `tests/test_controles_donnees.py`)
-- Le format JUnit `legacy` est requis pour que Xray reconnaisse la propriété (`pytest.ini`)
-- L'étape d'envoi s'exécute **même si les tests échouent** (`if: always()`), pour que les statuts FAILED remontent aussi dans Xray
+Le pipeline CI/CD pousse automatiquement les résultats vers Xray à chaque exécution, via `scripts/push_to_xray.py` :
+- Push distinct pour pytest (`report.xml` → `SEMA-6`) et pour Newman (`newman-report-xray.xml` enrichi → `SEMA-17`), via deux variables d'environnement (`XRAY_TEST_EXECUTION_KEY_PYTEST`, `XRAY_TEST_EXECUTION_KEY_NEWMAN`)
+- Si `XRAY_TEST_EXECUTION_KEY_NEWMAN` n'est pas configurée, ce push est ignoré proprement (log explicite) sans faire échouer le pipeline
+- Les étapes API / Newman / enrichissement / push Xray s'exécutent **même si pytest échoue** (`if: always()`), pour que les statuts FAILED remontent aussi dans Xray
 - Authentification via Client ID / Client Secret Xray Cloud, stockés en secrets GitHub (`XRAY_CLIENT_ID`, `XRAY_CLIENT_SECRET`) — jamais en clair dans le dépôt
 
-Pour rejouer la synchronisation en local :
+Pour rejouer la synchronisation complète en local :
 
 ```bash
 export XRAY_CLIENT_ID="..."
 export XRAY_CLIENT_SECRET="..."
+export XRAY_TEST_EXECUTION_KEY_PYTEST="SEMA-6"
+export XRAY_TEST_EXECUTION_KEY_NEWMAN="SEMA-17"
+
 pytest tests/ -v --junitxml=report.xml
-python scripts/push_to_xray.py
+newman run postman/semafore-api-tests.postman_collection.json --env-var base_url=http://127.0.0.1:8000 --reporters "cli,junit" --reporter-junit-export newman-report.xml
+python scripts/enrich_newman_report.py newman-report.xml newman-report-xray.xml
+NEWMAN_REPORT_PATH=newman-report-xray.xml python scripts/push_to_xray.py
 ```
 
 ## Pipeline CI/CD
 
-Le pipeline GitHub Actions échoue volontairement à l'étape des tests pytest tant que les anomalies de données ne sont pas résolues — comportement assumé, simulant un contrôle qualité bloquant avant livraison. Les résultats (succès et échecs) sont ensuite automatiquement remontés vers la Test Execution Xray, qu'ils échouent ou non.
+Séquence complète du workflow GitHub Actions :
+
+1. Checkout + setup Python
+2. Génération des données mock (seed idempotent)
+3. Contrôles SQL
+4. Tests pytest (avec export JUnit)
+5. Démarrage de l'API en arrière-plan (healthcheck en boucle avant de continuer)
+6. Setup Node.js + installation de Newman
+7. Exécution de la collection Postman (avec export JUnit)
+8. Enrichissement du rapport Newman (injection des `test_key` Xray)
+9. Push des deux rapports (pytest + Newman enrichi) vers leurs Test Executions Xray respectives
+
+Le pipeline échoue volontairement à l'étape des tests pytest tant que les anomalies de données ne sont pas résolues — comportement assumé, simulant un contrôle qualité bloquant avant livraison. Grâce aux `if: always()` sur les étapes suivantes, les résultats (succès et échecs, pytest comme Newman) sont malgré tout systématiquement remontés vers Xray.
 
 ## Stratégie de recette
 
