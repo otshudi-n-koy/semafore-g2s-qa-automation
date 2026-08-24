@@ -59,6 +59,10 @@ jobs:
             --reporters cli,junit \
             --reporter-junit-export newman-report.xml
 
+      - name: Enrichir le rapport Newman avec les test_key Xray
+        if: always()
+        run: python scripts/enrich_newman_report.py newman-report.xml newman-report-xray.xml
+
       - name: Pousser les résultats vers Xray Cloud
         if: always()
         env:
@@ -66,4 +70,5 @@ jobs:
           XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
           XRAY_TEST_EXECUTION_KEY_PYTEST: SEMA-6
           XRAY_TEST_EXECUTION_KEY_NEWMAN: ${{ vars.XRAY_TEST_EXECUTION_KEY_NEWMAN }}
+          NEWMAN_REPORT_PATH: newman-report-xray.xml
         run: python scripts/push_to_xray.py

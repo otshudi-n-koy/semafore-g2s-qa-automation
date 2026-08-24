@@ -13,10 +13,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"SEMA-11 Status is 200\", function () {\r",
+              "pm.test(\"Vérifier que l'API répond (healthcheck) GET /\", function () {\r",
               "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "pm.test(\"SEMA-11 API status OK\", function () {\r",
               "    const json = pm.response.json();\r",
               "    pm.expect(json.status).to.include(\"OK\");\r",
               "});"
@@ -45,10 +43,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"SEMA-12 Status is 200\", function () {\r",
+              "pm.test(\"Lister l'ensemble des employés GET /employees\", function () {\r",
               "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "pm.test(\"SEMA-12 Returns 100 employees\", function () {\r",
               "    const json = pm.response.json();\r",
               "    pm.expect(json.count).to.eql(100);\r",
               "});"
@@ -77,10 +73,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"SEMA-13 Status is 200\", function () {\r",
+              "pm.test(\"Filtrer les employés par statut actif GET /employees?statut=actif\", function () {\r",
               "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "pm.test(\"SEMA-13 All returned employees are actif\", function () {\r",
               "    const json = pm.response.json();\r",
               "    json.employees.forEach(emp => {\r",
               "        pm.expect(emp.statut).to.eql(\"actif\");\r",
@@ -117,7 +111,7 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"SEMA-14 Status is 404\", function () {\r",
+              "pm.test(\"Retourner 404 sur un matricule inexistant GET /employees/{matricule}\", function () {\r",
               "    pm.response.to.have.status(404);\r",
               "});"
             ],
@@ -145,11 +139,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"SEMA-15 Status is 200\", function () {\r",
+              "pm.test(\"Détecter les droits d'accès en doublon (application/role identiques)\", function () {\r",
               "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"SEMA-15 Detecte un doublon application/role\", function () {\r",
               "    const json = pm.response.json();\r",
               "    const seen = new Set();\r",
               "    let hasDuplicate = false;\r",
@@ -189,15 +180,10 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"SEMA-16 Status is 200\", function () {\r",
+              "pm.test(\"Vérifier la remontée des anomalies de flux GET /flux/status\", function () {\r",
               "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "pm.test(\"SEMA-16 3 flux returned\", function () {\r",
               "    const json = pm.response.json();\r",
               "    pm.expect(json.flux.length).to.eql(3);\r",
-              "});\r",
-              "pm.test(\"SEMA-16 At least one flux has PARTIEL status\", function () {\r",
-              "    const json = pm.response.json();\r",
               "    const hasPartiel = json.flux.some(f =>\r",
               "        f.etapes.some(e => e.statut === \"PARTIEL\")\r",
               "    );\r",
